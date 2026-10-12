@@ -42,6 +42,9 @@ export type Config = {
 	-- How long a call waits for another process's lock before giving up.
 	busyTimeoutMs: number,
 	foreignKeys: boolean,
+	-- True for a shell older than 3.50, which prints control characters in
+	-- text as they are instead of escaped. See Bind.literal.
+	rawOutput: boolean,
 }
 
 -- A line the shell is told to print after each statement, so the results

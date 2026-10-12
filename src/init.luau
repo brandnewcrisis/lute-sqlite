@@ -80,6 +80,7 @@ function Sqlite.open(file: string, options: Options?): (Database.Database?, stri
 		file = file,
 		busyTimeoutMs = opts.busyTimeoutMs or 5000,
 		foreignKeys = opts.foreignKeys ~= false,
+		rawOutput = version[1] == 3 and version[2] < 50,
 	})
 	if opts.wal ~= false then
 		-- Stored in the file, so this is a no-op on every open after the first.

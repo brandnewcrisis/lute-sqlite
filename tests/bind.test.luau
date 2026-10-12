@@ -29,6 +29,10 @@ check("a newline never appears as text", Bind.literal("a\nb") == "CAST(X'610A62'
 check("nor a tab", Bind.literal("\t") == "CAST(X'09' AS TEXT)")
 raises("a string with a NUL is refused, not stored to come back short", function() Bind.literal("a\0b") end, "NUL")
 check("UTF-8 stays readable", Bind.literal("Höß 🙂") == "'Höß 🙂'")
+check("a CR LF is fine for a shell that escapes its output", Bind.literal("a\r\nb") == "CAST(X'610D0A62' AS TEXT)")
+raises("and refused for one that does not, since it could not be read back", function() Bind.literal("a\r\nb", true) end, "CR LF")
+check("a lone CR or LF is fine either way", Bind.literal("a\rb\nc", true) == "CAST(X'610D620A63' AS TEXT)")
+raises("the refusal reaches a bound value", function() Bind.apply("SELECT ?", Bind.pack("a\r\nb"), true) end, "CR LF")
 check("an empty string is not NULL", Bind.literal("") == "''")
 check("a buffer is a blob", Bind.literal(buffer.fromstring("\0\255A")) == "X'00FF41'")
 

@@ -60,7 +60,7 @@ local SAFE_INTEGER = 2 ^ 53
 	One value as SQL text. Raises on what SQLite cannot hold, because that is
 	a bug in the caller and not something to discover as a wrong row later.
 ]]
-function Bind.literal(value: any): string
+function Bind.literal(value: any, rawOutput: boolean?): string
 	if value == nil or value == Bind.null then
 		return "NULL"
 	end
@@ -89,6 +89,16 @@ function Bind.literal(value: any): string
 		]]
 		if value:find("%z") then
 			error("sqlite: a string containing a NUL byte cannot be read back as text; store it as a blob (buffer.fromstring(value))", 0)
+		end
+		--[[
+			Lute hands back a child process's output with every CR LF turned
+			into LF. A shell from 3.50 on prints control characters escaped,
+			so that never touches a value; an older one prints them as they
+			are, and text holding a CR LF would come back holding only the LF.
+			Same rule as for NUL: refuse what could not be read back whole.
+		]]
+		if rawOutput and value:find("\r\n", 1, true) then
+			error("sqlite: this sqlite3 (older than 3.50) could not hand a string containing a CR LF line break back intact; use LF line endings, or store it as a blob (buffer.fromstring(value))", 0)
 		end
 		if value:find("[\1-\31\127]") == nil then
 			return "'" .. value:gsub("'", "''") .. "'"
@@ -150,7 +160,7 @@ end
 	which is what makes its rows and its change count unambiguous; use `batch`
 	for several and `script` for schema text.
 ]]
-function Bind.apply(sql: string, params: Params?): string
+function Bind.apply(sql: string, params: Params?, rawOutput: boolean?): string
 	local named = if params then params.named else nil
 	local values = if params then params.values else {}
 	local count = if params then params.count else 0
@@ -207,7 +217,7 @@ function Bind.apply(sql: string, params: Params?): string
 			nextIndex = math.max(nextIndex, index + 1)
 			used[index] = true
 			at = found + 1 + (if digits then #digits else 0)
-			emit(found - 1, Bind.literal(values[index]), at)
+			emit(found - 1, Bind.literal(values[index], rawOutput), at)
 		else
 			local name = sql:match("^[%a_][%w_]*", found + 1)
 			if name == nil then
@@ -218,7 +228,7 @@ function Bind.apply(sql: string, params: Params?): string
 				end
 				used[name] = true
 				at = found + 1 + #name
-				emit(found - 1, Bind.literal(named[name]), at)
+				emit(found - 1, Bind.literal(named[name], rawOutput), at)
 			end
 		end
 	end

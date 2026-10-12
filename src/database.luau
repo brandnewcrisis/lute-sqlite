@@ -108,7 +108,7 @@ end
 -- Every row the statement returns, each as `{ column = value }`. A NULL is
 -- simply absent from its row.
 function Database.query(self: Database, sql: string, ...: any): ({ Row }?, string?)
-	local outcomes, err = run(self, { Bind.apply(sql, Bind.pack(...)) })
+	local outcomes, err = run(self, { Bind.apply(sql, Bind.pack(...), self.config.rawOutput) })
 	if outcomes == nil then
 		return nil, err
 	end
@@ -118,7 +118,7 @@ end
 -- The first row, or nil when there is none. (nil, nil) is "no such row";
 -- (nil, "...") is a failure.
 function Database.first(self: Database, sql: string, ...: any): (Row?, string?)
-	local outcomes, err = run(self, { Bind.apply(sql, Bind.pack(...)) })
+	local outcomes, err = run(self, { Bind.apply(sql, Bind.pack(...), self.config.rawOutput) })
 	if outcomes == nil then
 		return nil, err
 	end
@@ -127,7 +127,7 @@ end
 
 -- The first column of the first row: a count, a setting, an id.
 function Database.value(self: Database, sql: string, ...: any): (any, string?)
-	local outcomes, err = run(self, { Bind.apply(sql, Bind.pack(...)) })
+	local outcomes, err = run(self, { Bind.apply(sql, Bind.pack(...), self.config.rawOutput) })
 	if outcomes == nil then
 		return nil, err
 	end
@@ -140,7 +140,7 @@ end
 
 -- Run a statement for what it does, not what it returns.
 function Database.exec(self: Database, sql: string, ...: any): (Change?, string?)
-	local outcomes, err = run(self, { Bind.apply(sql, Bind.pack(...)) })
+	local outcomes, err = run(self, { Bind.apply(sql, Bind.pack(...), self.config.rawOutput) })
 	if outcomes == nil then
 		return nil, err
 	end
@@ -170,13 +170,13 @@ function Database.batch(self: Database, statements: { Statement }, options: Batc
 	local prepared: { string } = {}
 	for index, statement in statements do
 		if type(statement) == "string" then
-			prepared[index] = Bind.apply(statement, nil)
+			prepared[index] = Bind.apply(statement, nil, self.config.rawOutput)
 		else
 			local sql = statement[1]
 			if type(sql) ~= "string" then
 				error(`sqlite: statement {index} of the batch has no SQL in first place`, 0)
 			end
-			prepared[index] = Bind.apply(sql, Bind.pack(table.unpack(statement, 2, #statement)))
+			prepared[index] = Bind.apply(sql, Bind.pack(table.unpack(statement, 2, #statement)), self.config.rawOutput)
 		end
 	end
 	if #prepared == 0 then

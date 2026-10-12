@@ -74,7 +74,7 @@ loose:exec("DELETE FROM kills")
 loose:exec("DELETE FROM log")
 
 -- every kind of value, there and back
-local nasty = [[a;rm -rf /;b "quoted" 'single' $(whoami) `id` \ %s -- /* ]] .. "\n.shell echo pwned\n\ttab \r\n \1\127 ünïcödé 🙂 '); DROP TABLE players; --"
+local nasty = [[a;rm -rf /;b "quoted" 'single' $(whoami) `id` \ %s -- /* ]] .. "\n.shell echo pwned\n\ttab \r \n \1\127 ünïcödé 🙂 '); DROP TABLE players; --"
 db:exec("INSERT INTO players (user_id, name, note, crest) VALUES (?, ?, ?, ?)", 7, nasty, "", buffer.fromstring("\0\1\255'\n"))
 local back = db:first("SELECT name, note, crest, typeof(name) AS kind FROM players WHERE user_id = ?", 7)
 check("a hostile string round-trips byte for byte", back.name == nasty, back.name)
@@ -82,6 +82,15 @@ check("and is still text", back.kind == "text")
 check("and can be searched for", db:value("SELECT user_id FROM players WHERE name = ?", nasty) == 7)
 check("the table it tried to drop is still there", db:value("SELECT count(*) FROM players") == 3)
 check("an empty string is not NULL", back.note == "")
+if db.config.rawOutput then
+	-- A shell before 3.50 prints text as it is, and Lute turns CR LF into LF
+	-- on the way back, so such a string is refused, not stored to come back
+	-- changed.
+	check("a CR LF line break is refused on a shell that would not hand it back", not pcall(db.exec, db, "UPDATE players SET note = ? WHERE user_id = 5", "one\r\ntwo"))
+else
+	db:exec("UPDATE players SET note = ? WHERE user_id = 5", "one\r\ntwo")
+	check("a CR LF line break round-trips", db:value("SELECT note FROM players WHERE user_id = 5") == "one\r\ntwo")
+end
 check("a blob round-trips", typeof(back.crest) == "buffer" and buffer.tostring(back.crest) == "\0\1\255'\n")
 local numbers, numbersErr = db:first("SELECT ? AS whole, ? AS fraction, ? AS big, ? AS huge, ? AS yes, ? AS missing", 11494693418, 0.1, 2 ^ 53 - 1, math.huge, true, nil)
 check("numbers round-trip", numbers ~= nil and numbers.whole == 11494693418 and numbers.fraction == 0.1 and numbers.big == 2 ^ 53 - 1 and numbers.huge == math.huge and numbers.yes == 1 and numbers.missing == nil, numbersErr)

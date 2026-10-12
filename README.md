@@ -61,9 +61,9 @@ database, including while it waits for another process's lock.
 ## Requirements
 
 `sqlite3` 3.37 or later on `PATH` (or pass `path`). macOS ships it; on Debian or Ubuntu
-it is `apt install sqlite3`. Developed against 3.54. Shells before 3.50 print strings
-with control characters differently; the parser reads both forms and is unit-tested on
-both, but the integration suite has only been run against 3.54.
+it is `apt install sqlite3`. Shells before 3.50 print strings with control
+characters differently; the parser reads both forms. The whole suite passes against 3.54
+(macOS) and 3.45 (Ubuntu 24.04).
 
 ## API
 
@@ -114,6 +114,12 @@ db:query("SELECT * FROM t WHERE a = :a AND b = :b", { a = 1, b = "x" })  -- name
 - **Text cannot contain a NUL byte.** SQLite would store it, but `sqlite3` prints text as
   a C string and would hand back only the part before the NUL. Such a string is refused
   with an error; store it as a blob (`buffer.fromstring(value)`).
+- **On `sqlite3` older than 3.50, text cannot contain a CR LF line break.** Lute turns every
+  CR LF in a child process's output into LF, and a shell that old prints text as it is, so the
+  string would come back changed. It is refused with an error; use LF line endings or a blob. A
+  lone CR or LF is fine, and from 3.50 on the shell escapes control characters, so nothing is
+  affected. (Text with CR LF that something else wrote to the file reads back with LF on an old
+  shell: that cannot be seen from here.)
 - NaN is refused (SQLite turns it into NULL).
 - A NULL column is absent from its row, so `row.note == nil`. If two columns in a result
   share a name, the later one wins; give them aliases.
