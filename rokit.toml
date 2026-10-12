@@ -1,0 +1,5 @@
+# Toolchain for lute-sqlite.
+# Run `rokit install` after cloning to get the pinned lute binary.
+
+[tools]
+lute = "luau-lang/lute@1.0.0"

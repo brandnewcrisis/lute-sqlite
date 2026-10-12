@@ -1,0 +1,7 @@
+*.db
+*.db-wal
+*.db-shm
+.lute-sqlite-*.sql
+tests/_scratch/
+.DS_Store
+examples/data/
